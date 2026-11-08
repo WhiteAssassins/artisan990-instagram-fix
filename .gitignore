@@ -1,0 +1,5 @@
+.signing/
+*.keystore
+*.jks
+.DS_Store
+dist/
