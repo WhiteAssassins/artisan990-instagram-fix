@@ -36,13 +36,18 @@ ArtisanROM 4.0.1 already includes a patch for an earlier abort in the same path
 (`zzzz_sf_renderengine_compat`). On 4.0.2 the crash now happens one step later, in
 `Unable to generate SkImage`.
 
-Two things force GPU composition while Instagram is playing video:
+Several things force GPU composition while Instagram is playing video:
 
 1. **Blur.** Samsung's blur (volume panel, notification shade, ...) drawn over the video.
 2. **Afterimage compensation.** Samsung `AfterimageCompensationService` calls `captureDisplay`
    **every 30 seconds** (`config_AFC_type=5`). On this ROM it fails anyway
    (`mAFPC_ABC: setImageSize fail(4)`), so it does nothing useful. It is what causes the crashes
    "without touching anything".
+3. **Closing a screen over an HDR video.** When a screen opened on top of a video (comments, a
+   profile, ...) slides away, the video layer gets squeezed into a strip a few pixels wide. The
+   display hardware can't show a layer that thin, so it falls back to the GPU.
+4. **Edge lighting pop-ups.** With notification pop-up style set to *Brief*, a notification shows
+   as an edge lighting window with its own blur, which ignores *Reduce transparency and blur*.
 
 ## What the module does
 
@@ -50,6 +55,8 @@ Two things force GPU composition while Instagram is playing video:
 |---|---|
 | Afterimage compensation capture | Bind-mounts a copy of `/product/overlay/framework-res__c1sxxx__auto_generated_rro_product.apk` whose **only** change is `config_AFC_type` **5 → 0**. It is applied only if the original file matches the ArtisanROM 4.0.2 c1s hash. |
 | Blur over video | Listens for app-switch events (`wm_set_resumed_activity`, no polling) and turns on Samsung **Reduce transparency and blur** (`settings global accessibility_reduce_transparency`) **only while Instagram is in the foreground**. Blur stays on everywhere else. |
+| Closing animation over video | Same listener: sets `window_animation_scale` and `transition_animation_scale` to **0 only while Instagram is in the foreground**, so screens open and close instantly there. Your own values are saved and restored when you leave the app (and on uninstall). |
+| Edge lighting pop-ups | Same listener: sets `system edge_lighting` to **0** (pop-up style *Detailed*) only while Instagram is in the foreground, restored afterwards. |
 
 Nothing on `/system`, `/product` or `/vendor` is modified on disk.
 
@@ -60,11 +67,11 @@ Nothing on `/system`, `/product` or `/vendor` is modified on disk.
 3. Reboot.
 
 The installer reports whether the afterimage fix is compatible with your ROM. If your overlay is
-different (other device or ROM version), that part is skipped and only the per-app blur works.
+different (other device or ROM version), that part is skipped and only the per-app part (blur + animations) works.
 
 ## Configure
 
-Apps where blur is turned off: `/data/adb/modules/artisan990_noblur/apps.txt`, one package per
+Apps where blur and transition animations are turned off: `/data/adb/modules/artisan990_noblur/apps.txt`, one package per
 line. Example: add `com.zhiliaoapp.musically` for TikTok.
 
 ## Uninstall
@@ -87,6 +94,11 @@ adb shell settings get global accessibility_reduce_transparency
 
 - Some Instagram videos are decoded as **AV1 in software** (Dav1d). The Exynos 990 has no AV1
   hardware decoder, so a few videos can stutter. That is unrelated to this module.
+- Some Samsung pop-ups draw their own blur and ignore *Reduce transparency and blur*, for
+  example the "Copied to clipboard" toast. If one shows up over an HDR video it can still cause a
+  soft reboot. It is rare, but it can happen.
+- Inside Instagram, screens open and close without animation, and notification pop-ups use the
+  *Detailed* style. Both go back to normal when you leave the app.
 - This is a workaround. The real fix belongs in the ROM (RenderEngine / Mali import path).
 
 ## Rebuilding the overlay

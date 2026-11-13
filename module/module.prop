@@ -1,6 +1,6 @@
 id=artisan990_noblur
 name=ArtisanROM 990 Instagram Soft Reboot Fix
-version=v2.0
-versionCode=6
+version=v2.2
+versionCode=8
 author=WhiteAssassins
-description=Exynos 990: disables the broken afterimage-compensation screen capture (config_AFC_type 5->0) and turns off blur only while Instagram (apps.txt) is open, preventing SurfaceFlinger soft reboots. Blur stays on elsewhere.
+description=Exynos 990: disables the broken afterimage-compensation screen capture (config_AFC_type 5->0) and, only while Instagram (apps.txt) is open, turns off blur and window transition animations and switches notification pop-ups to Detailed (no edge lighting blur), preventing SurfaceFlinger soft reboots. Everything is restored when you leave the app.
